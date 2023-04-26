@@ -62,10 +62,10 @@ module Yoxii
         d = _directionDelta(move)
         c = totemCoords(s.board)
         while true
-            c += d
+            c = _addCoords(c, d)
             if _oob(s.board, c) || _otherPlayerHasCell(s, c)
                 throw(CannotMoveException())
-            elseif s.board[b, c] == EMPTY
+            elseif _empty(s.board,  c)
                 return c
             elseif !_currentPlayerHasCell(s, c)
                 throw(UnknownCellException())
@@ -103,6 +103,8 @@ module Yoxii
         end
     end
 
+    _addCoords((r1, c1)::Coords, (r2, c2)::Coords)::Coords = (r1 + r2, c1 + c2)
+
     function _directionDelta(d::Direction)::Coords
         if d == UP
             return (-1, 0)
@@ -133,6 +135,8 @@ module Yoxii
     _currentPlayerHasCell(s::State, (r, c)::Coords) = _currentPlayerHasCell(s, r, c)
     _otherPlayerHasCell(s::State, r::Int, c::Int) = _playerHasCell(s.board, r, c, !s.white_to_play)
     _otherPlayerHasCell(s::State, (r, c)::Coords) = _otherPlayerHasCell(s, r, c)
+
+    _empty(b::Board, (r, c)::Coords)::Bool = b[r, c] == EMPTY
 
     function _oob(b::Board, r::Int, c::Int, d::Direction)::Bool
         (dr, dc) = _directionDelta(d)

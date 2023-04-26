@@ -1,6 +1,5 @@
 module Yoxii
     const EMPTY = 0
-    const TOTEM = 8
     const OUT_OF_BOUNDS = 9
 
     Board = Matrix{Int}
@@ -16,6 +15,7 @@ module Yoxii
 
     struct State
         board::Board
+        totem::Coords
         white_to_play::Bool
         white_pieces::Vector{Int}
         red_pieces::Vector{Int}
@@ -35,32 +35,42 @@ module Yoxii
         board[1, end] = OUT_OF_BOUNDS
         board[1, end-1] = OUT_OF_BOUNDS
         board[2, end] = OUT_OF_BOUNDS
-        board[4, 4] = TOTEM
-        return State(board, true, [5, 5, 5, 3], [5, 5, 5, 3])
+        return State(board, (4, 4), true, [5, 5, 5, 3], [5, 5, 5, 3])
+    end
+
+    function transition(s::State, p::Play)::State
+        newTotem = _tryCanMove(s, p.move)
+        _tryCanPlace(s, newTotem, p.place, p.value)
+        # No exception, proceed
+        (r, c) = p.place
+        newBoard = copy(s.board)
+        newBoard[r, c] = s.white_to_play ? p.value : - p.value
+        newWhitePieces = copy(s.white_pieces)
+        newRedPieces = copy(s.red_pieces)
+        if (s.white_to_play)
+            newWhitePieces[p.value] -= 1
+        else
+            newRedPieces[p.value] -= 1
+        end
+        return State(newBoard, newTotem, !s.white_to_play, newWhitePieces, newRedPieces)
+    end
+
+    function printState(s::State)
+        println("Current player : $(_playerStr(s))")
+        println("White pieces : $(s.white_pieces)")
+        println("Red pieces   : $(s.red_pieces)")
+        _printBoard(s.board, s.totem)
     end
 
     struct MultipleTotemException <: Exception end
     struct UnknownCellException <: Exception end
     struct CannotMoveException <: Exception end
+    struct NotEnoughPiecesException <: Exception end
+    struct InvalidPlacementException <: Exception end
 
-    function totemCoords(b::Board)::Coords
-        t = nothing
-        for r = 1:size(b, 1)
-            for c = 1:size(b, 2)
-                if b[r, c] == TOTEM
-                    if t !== nothing
-                        throw(MultipleTotemException())
-                    end
-                    t = (r, c)
-                end
-            end
-        end
-        return t
-    end
-
-    function tryMove(s::State, move::Direction)::Coords
+    function _tryCanMove(s::State, move::Direction)::Coords
         d = _directionDelta(move)
-        c = totemCoords(s.board)
+        c = s.totem
         while true
             c = _addCoords(c, d)
             if _oob(s.board, c) || _otherPlayerHasCell(s, c)
@@ -73,19 +83,39 @@ module Yoxii
         end
     end
 
-    function transition(s::State, p::Play)::State
-        c = tryMove(s, p.move)
-        return State(s.board, !s.white_to_play, s.white_pieces, s.red_pieces)
+    function _freeSpaces(b::Board, totem::Coords)::Vector{Coords}
+        list = []
+        for d in instances(Direction)
+            if (_oob(b, totem, d))
+                continue
+            end
+            c = _addCoords(totem, _directionDelta(d))
+            if _empty(b, c)
+                push!(list, c)
+            end
+        end
+        return list
     end
 
-    function printState(s::State)
-        println("Current player : $(_playerStr(s))")
-        println("White pieces : $(s.white_pieces)")
-        println("Red pieces   : $(s.red_pieces)")
-        printBoard(s.board)
+    function _tryCanPlace(s::State, totem::Coords, p::Coords, v::Int)
+        if _currentPlayerPieces(s)[v] <= 0
+            throw(NotEnoughPiecesException())
+        end
+        free = _freeSpaces(s.board, totem)
+        if size(free, 1) > 0
+            for space in free
+                if space == p
+                    return
+                end
+            end
+            throw(InvalidPlacementException())
+        end
+        if !_empty(s.board, p)
+            throw(InvalidPlacementException())
+        end
     end
 
-    function printBoard(b::Board)
+    function _printBoard(b::Board, totem::Coords)
         sup = ""
         for c = 1:size(b, 2)
             sup = string(sup, _cellStrUp(b, 1, c))
@@ -95,7 +125,7 @@ module Yoxii
             smid = ""
             sdown = ""
             for c = 1:size(b, 2)
-                smid = string(smid, _cellStrMid(b, r, c))
+                smid = string(smid, _cellStrMid(b, r, c, totem))
                 sdown = string(sdown, _cellStrDown(b, r, c))
             end
             println(smid)
@@ -103,6 +133,7 @@ module Yoxii
         end
     end
 
+    _currentPlayerPieces(s::State)::Vector{Int} = s.white_to_play ? s.white_pieces : s.red_pieces
     _addCoords((r1, c1)::Coords, (r2, c2)::Coords)::Coords = (r1 + r2, c1 + c2)
 
     function _directionDelta(d::Direction)::Coords
@@ -164,13 +195,13 @@ module Yoxii
 
     _isCellHoshi(b::Board, r::Int, c::Int)::Bool = size(b) == (7, 7) && ((r, c) == (2, 4) || (r, c) == (4, 6) || (r, c) == (6, 4) || (r, c) == (4, 2))
 
-    function _cellStrPiece(b::Board, r::Int, c::Int)::String
+    function _cellStrPiece(b::Board, r::Int, c::Int, totem::Coords)::String
         if b[r, c] == OUT_OF_BOUNDS
             return "   "
+        elseif (r, c) == totem
+            return " * "
         elseif b[r, c] == EMPTY
             return _isCellHoshi(b, r, c) ? " . " : "   "
-        elseif b[r, c] == TOTEM
-            return " * "
         elseif b[r, c] < 0
             return "<$(abs(b[r, c]))>"
         else
@@ -178,9 +209,9 @@ module Yoxii
         end
     end
     
-    function _cellStrMid(b::Board, r::Int, c::Int)::String
+    function _cellStrMid(b::Board, r::Int, c::Int, totem::Coords)::String
         s = !_oob(b, r, c) || !_oob(b, r, c, LEFT) ? "|" : " "
-        s = string(s, _cellStrPiece(b, r, c))
+        s = string(s, _cellStrPiece(b, r, c, totem))
         if c == size(b, 2)
             return string(s, !_oob(b, r, c) || !_oob(b, r, c, RIGHT) ? "|" : " ")
         end

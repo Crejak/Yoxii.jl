@@ -1,6 +1,6 @@
 # Yoxii engine in Julia
 
-Simple Yoxii engine in Julia. It can 
+Simple Yoxii engine in Julia. It can :
 
 - Create an initial Yoxii "State" (the board, totem position and player pieces)
 - Print the state in a human-friendly format

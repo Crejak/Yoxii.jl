@@ -2,6 +2,8 @@ module Yoxii
 const EMPTY = 0
 const OUT_OF_BOUNDS = 9
 
+export Play
+
 Board = Matrix{Int}
 Coords = Tuple{Int,Int}
 
@@ -136,6 +138,17 @@ end
 _currentPlayerPieces(s::State)::Vector{Int} = s.white_to_play ? s.white_pieces : s.red_pieces
 _addCoords((r1, c1)::Coords, (r2, c2)::Coords)::Coords = (r1 + r2, c1 + c2)
 
+#changement: namedtuple au lieu de fonction
+direction_deltas = (
+    UP => (-1, 0),
+    UP_RIGHT => (-1, 1),
+    RIGHT => (0, 1),
+    DOWN_RIGHT => (1, 1),
+    DOWN => (1, 0),
+    DOWN_LEFT => (1, -1),
+    LEFT => (0, -1),
+    UP_LEFT => (-1, -1)
+)
 function _directionDelta(d::Direction)::Coords
     if d == UP
         return (-1, 0)

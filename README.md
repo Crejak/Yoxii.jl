@@ -61,6 +61,7 @@ AlphaZero.Scripts.test_game(YoxiiGameSpec())
   - [ ] Only export what need to be public
   - [ ] Use more consistent naming
   - [ ] See how I can make the code more idiomatic / nice to read
+  - [ ] Add documentation comments
 - Optimization
   - [ ] Benchmark ??? I have to idea if this code is efficient or not (probably not)
   - [ ] Maybe mutate the state instead of copying it every time ?

@@ -1,0 +1,8 @@
+name = "Yoxii"
+uuid = "b5d25f63-3603-4ee4-b507-107d53e4e981"
+version = "0.1.0"
+authors = ["Valentin Rigolle <valentin.rigolle@gmail.com"]
+
+[deps]
+AlphaZero = "8ed9eb0b-7496-408d-8c8b-2119aeea02cd"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

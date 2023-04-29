@@ -57,7 +57,7 @@ export WHITE, RED, INITIAL_HAND, EMPTY, OUT_OF_BOUNDS, ALL_ACTIONS
 const WHITE::Player = true
 const RED::Player = false
 
-const INITIAL_HAND = @SVector [5, 5, 5, 3]
+const INITIAL_HAND::Hand = @SVector [5, 5, 5, 3]
 
 const EMPTY::Cell = 0
 const OUT_OF_BOUNDS::Cell = 9
@@ -138,7 +138,16 @@ Base.:+(a::Position, b::Position) = Position(a.row + b.row, a.column + b.column)
 # Board functions
 #################
 
-export getcell, setcell, empty_positions_except
+# Exceptions
+
+export OutOfBoundsException
+
+struct OutOfBoundsException <: Exception end
+
+# Functions
+
+export getcell, setcell, empty_positions_except, empty_positions_around
+export getscore, player_pieces_around
 
 function getcell(board::Board, position::Position)::Cell
     if 1 <= position.row <= BOARD_SIZE && 1 <= position.column <= BOARD_SIZE
@@ -149,6 +158,9 @@ function getcell(board::Board, position::Position)::Cell
 end
 
 function setcell(board::Board, position::Position, cell::Cell)::Board
+    if getcell(board, position) == OUT_OF_BOUNDS
+        throw(OutOfBoundsException())
+    end
     mutable_board = MMatrix(board)
     mutable_board[position.row, position.column] = cell
     Board(mutable_board)
@@ -179,6 +191,24 @@ empty_positions_around(board::Board, totem::Position) = [
     if getcell(board, totem + delta(direction)) == EMPTY
 ]
 
+function getscore(board::Board, totem::Position, player::Player)
+    score = 0
+    for direction in instances(Direction)
+        cell = getcell(board, totem + delta(direction))
+        isplayer(cell) && (score += cell)
+    end
+    player == WHITE ? score : - score
+end
+
+function player_pieces_around(board::Board, totem::Position, player::Player)
+    count = 0
+    for direction in instances(Direction)
+        cell = getcell(board, totem + delta(direction))
+        isplayer(cell, player) && (count += 1)
+    end
+    count
+end
+
 #################
 # State functions
 #################
@@ -202,10 +232,27 @@ struct InvalidPlacePositionException <: Exception end
 
 # Logic
 
-export isfinished, perform_action, move_totem, can_move_totem, valid_moves, valid_actions
+export isfinished, getscore, player_pieces_around, getwinner
+export perform_action, move_totem, can_move_totem, valid_moves, valid_actions
 export assert_can_place, valid_place_positions, empty_positions_around
 
 isfinished(state::State) = isempty(valid_moves(state))
+
+getscore(state::State, player::Player) = getscore(state.board, state.totem, player)
+player_pieces_around(state::State, player::Player) = player_pieces_around(state.board, state.totem, player)
+
+function getwinner(state::State)
+    if isfinished(state)
+        white_score = getscore(state, WHITE)
+        white_score > 0 && return WHITE
+        white_score < 0 && return RED
+        white_pieces = player_pieces_around(state, WHITE)
+        red_pieces = player_pieces_around(state, RED)
+        white_pieces > red_pieces && return WHITE
+        red_pieces > white_pieces && return RED
+    end
+    nothing
+end
 
 function valid_actions(state::State)::Vector{Action}
     actions = []

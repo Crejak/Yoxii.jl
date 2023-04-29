@@ -1,70 +1,66 @@
-# Yoxii engine in Julia
+# Julia Yoxii game
 
-Simple Yoxii engine in Julia. It can :
-
-- Create an initial Yoxii "State" (the board, totem position and player pieces)
-- Print the state in a human-friendly format
-- Validate transitions ("Plays") from a given state
-- Compute a state by applying a play to a previous state
+Simple Yoxii game engine in Julia. The goal is to use it for reinforcement learning.
 
 ## Usage
 
+First, you need to load the dependencies :
+
 ```julia
-include("Yoxii.jl")
+# Inside Pkg REPL
+activate .
+instantiate
+```
+
+### Using the game engine
+
+```julia
+# Game objects and logic are defined in the Game submodule
+using Yoxii.Game
 
 # Create an initial state
-s = Yoxii.initState()
+s = init_state()
 
-# Print the state
-Yoxii.printState(s)
+# Play a move : move the totem in the NORTH / UP direction, place a piece with the value 3 at
+# the cell located in row 2, column 4
+s = perform_action(s, Action(NORTH, Position(2, 4), 3))
 
-# Perform a play (transition)
-# Signature of a Play is (move::Direction, place::Coords, value::Int)
-# where 'move' is the direction where the totem will move
-#       'place' is the coordinates where the piece will be placed
-#       'value' is the value of the piece to place
-s = Yoxii.transition(s, Yoxii.Play(Yoxii.UP, (2, 4), 3))
+# Check if the game is finished
+isfinished(s)
+
+# Get the winner
+getwinner(s)
 ```
 
-Example of printing a state. White pieces are in parenthesis, whereas red pieces are in diamonds.
-
-```
-Current player : Red
-White pieces : [4, 5, 3, 3]
-Red pieces   : [3, 5, 5, 3]
-        *---*---*---*
-        |   |   |   |
-    *---*---*---*---*---*
-    |<1>|(1)|(3)|   |   |
-*---*---*---*---*---*---*---*
-|   |<1>|   |   |   |   |   |
-*---*---*---*---*---*---*---*
-| * |(3)|   |   |   | . |   |
-*---*---*---*---*---*---*---*
-|   |   |   |   |   |   |   |
-*---*---*---*---*---*---*---*
-    |   |   | . |   |   |
-    *---*---*---*---*---*
-        |   |   |   |
-        *---*---*---*
-
-```
-
-Invalid transitions will throw errors :
+### Using the AlphaZero wrapper
 
 ```julia
-s = Yoxii.transition(s, Yoxii.Play(Yoxii.UP_RIGHT, (4, 2), 3))
-```
+# Import the AlphaZero library
+using AlphaZero
+
+# The wrapper for AlphaZero.jl is defined in the AZWrapper submodule
+using Yoxii.AZWrapper
+
+# Run the test script
+AlphaZero.Scripts.test_game(YoxiiGameSpec())
 
 ```
-ERROR: Main.Yoxii.CannotMoveException()
-Stacktrace:
- [1] _tryCanMove(s::Main.Yoxii.State, move::Main.Yoxii.Direction)
-   @ Main.Yoxii /mnt/e/Projets/yoxii/test.jl:77
- [2] transition(s::Main.Yoxii.State, p::Main.Yoxii.Play)
-   @ Main.Yoxii /mnt/e/Projets/yoxii/test.jl:42
- [3] top-level scope
-   @ REPL[331]:1
-```
 
-##
+## TODO
+
+- Machine learning
+  - [ ] Ask the mathematicians how the f*ck I can get AlphaZero to work correctly
+- Testing
+  - [ ] Complete the unit test coverage
+  - [ ] Add integration tests for whole games
+- IO
+  - [ ] Pretty print the state
+  - [ ] Parse / format actions to / from string
+  - [ ] CLI for playing games interactively
+- Cleaning
+  - [ ] Only export what need to be public
+  - [ ] Use more consistent naming
+  - [ ] See how I can make the code more idiomatic / nice to read
+- Optimization
+  - [ ] Benchmark ??? I have to idea if this code is efficient or not (probably not)
+  - [ ] Maybe mutate the state instead of copying it every time ?
